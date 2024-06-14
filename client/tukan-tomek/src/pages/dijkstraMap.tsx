@@ -1,9 +1,63 @@
 import React, { useEffect, useRef, useState } from 'react';
 import paper from 'paper';
 import './dijkstraMap.css';
+import { Button, createMuiTheme, makeStyles, ThemeProvider } from '@material-ui/core';
+
+const theme = createMuiTheme({
+    palette: {
+      primary: {
+        main: '#3f51b5',
+      },
+      secondary: {
+        main: '#f50057',
+      },
+    },
+  });
+  
+  const useStyles = makeStyles((theme) => ({
+    floatingButton: {
+      position: 'fixed',
+      bottom: theme.spacing(2),
+    },
+    primaryButton: {
+      right: theme.spacing(2),
+    },
+    secondaryButton: {
+      right: theme.spacing(14),
+    },
+    fpsDisplay: {
+      right: theme.spacing(26),
+      color: 'white',
+      background: 'rgba(0, 0, 0, 0.5)',
+      padding: theme.spacing(1),
+      borderRadius: theme.spacing(1),
+    },
+  }));
+  
 
 export function DijkstraMap() {
+    const classes = useStyles();
+    const [fps, setFps] = useState(0);
+    let lastFrameTime = performance.now();
+
+    const calculateFps = () => {
+        const currentFrameTime = performance.now();
+        const timeDifference = currentFrameTime - lastFrameTime;
+        setFps(Math.round(1000 / timeDifference));
+        lastFrameTime = currentFrameTime;
+        requestAnimationFrame(calculateFps);
+    };
+
+    useEffect(() => {
+        calculateFps();
+    }, []);
+
     const [addNodeMode, setAddNodeMode] = useState(false);
+
+    const handleResize = () => {
+        // Force a re-render on window resize
+        setGraph({ ...graph });
+      };
 
     const canvasRef = useRef(null);
     const [graph, setGraph] = useState({
@@ -47,6 +101,7 @@ export function DijkstraMap() {
     useEffect(() => {
       if (canvasRef.current) {
         paper.setup(canvasRef.current);
+        paper.view.viewSize = new paper.Size(window.innerWidth, window.innerHeight);
   
         const nodePositions = {};
         const nodeItems = {};
@@ -113,19 +168,23 @@ export function DijkstraMap() {
   
         drawGraph();
   
-        window.addEventListener('resize', drawGraph);
-  
+
+        window.addEventListener('resize', handleResize);
+
         return () => {
-          window.removeEventListener('resize', drawGraph);
-        };
+          window.removeEventListener('resize', handleResize);
+          };
       }
     }, [graph, selectedNodes]);
   
     return (
-      <div className="canvas-container">
-        <canvas ref={canvasRef} className="full-page-canvas" />
-        <button onClick={addNode}>wezel</button>
-        <button onClick={addEdge}>krawedz</button>
-      </div>
-    );
+        <ThemeProvider theme={theme}>
+            <div className="canvas-container">
+                <canvas ref={canvasRef} className="full-page-canvas" />
+                <Button variant="contained" color="primary" onClick={addNode} className={`${classes.floatingButton} ${classes.primaryButton}`}>wezel</Button>
+                <Button variant="contained" color="secondary" onClick={addEdge} className={`${classes.floatingButton} ${classes.secondaryButton}`}>krawedz</Button>
+                <div className={`${classes.floatingButton} ${classes.fpsDisplay}`}>FPS: {fps}</div>
+            </div>
+        </ThemeProvider>
+      );
   }
