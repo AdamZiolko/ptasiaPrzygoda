@@ -47,8 +47,8 @@ const useStyles = makeStyles((theme) => ({
     width: theme.spacing(7),
     bottom: theme.spacing(3),
     height: theme.spacing(7),
-    boxShadow: '0 0 10px 5px rgba(255, 0, 0, 0.5)', // Red glow
-    '& svg': { // Make the icon itself bigger
+    boxShadow: '0 0 10px 5px rgba(255, 0, 0, 0.5)', // 
+    '& svg': { // 
       fontSize: '2rem',
     },
   },
@@ -78,7 +78,8 @@ export function DijkstraMap() {
   const [nodeToDeletion, setNodeToDeletion] = useState(null);
   const [trashIsClicked, setTrashIsClicked] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-
+  let highestLetter = '';
+  let lowestLetter = '';
 
   const handleTrashClick = () => {
     if (switchEdit) setSwitchEdit(!switchEdit)
@@ -88,7 +89,7 @@ export function DijkstraMap() {
       const newTrashIsClicked = !prevTrashIsClicked;
       console.log(newTrashIsClicked, 'trash button clicked');
       if (newTrashIsClicked) {
-        setSnackbarOpen(true); // Open the snackbar when trash mode is enabled
+        setSnackbarOpen(true); // 
       }
       return newTrashIsClicked;
     });
@@ -141,9 +142,7 @@ export function DijkstraMap() {
   }, []);
 
 
-  const handleResize = () => {
-    setGraph({ ...graph });
-  };
+
 
 
 
@@ -168,7 +167,6 @@ export function DijkstraMap() {
   const addEdge = () => {
     if (selectedNodes.length === 2) {
       setGraph(prevGraph => {
-        // Create a deep copy of prevGraph
         const newGraph = JSON.parse(JSON.stringify(prevGraph));
 
         if (newGraph[selectedNodes[0]]?.[selectedNodes[1]]) {
@@ -196,13 +194,94 @@ export function DijkstraMap() {
       circle.fillColor = new paper.Color(color);
     });
   }
+
+  function changeNodeColor(nodeKey: string, color: string, i: boolean = true ) {
+    if(i){
+    circles.forEach(circle => {
+      if (circle.data.nodeKey === nodeKey) {
+        circle.fillColor = new paper.Color(color);
+      }
+    });
+  } else {
+    const centerX = paper.view.size.width / 2;
+    const centerY = paper.view.size.height / 2;
+    const radius = Math.min(centerX, centerY) * 0.8;
+
+    const position = nodePositions[nodeKey] || new paper.Point(
+      centerX + radius * Math.cos(45),
+      centerY + radius * Math.sin(45)
+    );
+    circles.forEach(circle => {
+      if (circle.data.nodeKey === nodeKey) {
+
+      let gradient = new paper.Gradient(['#AA076B', '#61045F'], false);
+      let gradientColor = new paper.Color(gradient, position, position.add([30, 30]));
+      circle.fillColor = gradientColor;
+      }
+    })
+
+  }
+}
+
   ///////////////////////////////////////////////////////////////////////
   useEffect(() => {
     if (canvasRef.current) {
       paper.setup(canvasRef.current);
       paper.view.viewSize = new paper.Size(window.innerWidth, window.innerHeight);
+  
 
-      // const nodePositions = {};
+
+
+      let middleButtonPressed = false;
+      let lastPoint: null = null;
+
+      let lerpFactor = 0.8; 
+
+      const onMouseDown = function(event) {
+        if (event.event.button === 1) {
+          event.preventDefault();
+          middleButtonPressed = true;
+          lastPoint = event.point;
+        }
+      }
+  
+      const onMouseDrag = function(event) {
+        if (middleButtonPressed) {
+          event.preventDefault();
+          const delta = event.point.subtract(lastPoint);
+          const newCenter = paper.view.center.subtract(delta);
+          paper.view.center = paper.view.center.add(newCenter.subtract(paper.view.center).multiply(lerpFactor));
+          lastPoint = event.point;
+        }
+      }
+  
+      const onMouseUp = function(event) {
+        if (event.event.button === 1) {
+          middleButtonPressed = false;
+        }
+      }
+  
+      const onWheel = function(event) {
+        event.preventDefault();
+        const zoomFactor = 1.1;
+  
+        let oldCenter = paper.view.center;
+  
+        if (event.deltaY < 0) { 
+            paper.view.zoom *= zoomFactor;
+        } else { 
+            paper.view.zoom /= zoomFactor;
+        }
+  
+        paper.view.center = oldCenter;
+      }
+  
+      paper.view.onMouseDown = onMouseDown;
+      paper.view.onMouseDrag = onMouseDrag;
+      paper.view.onMouseUp = onMouseUp;
+      paper.view.element.addEventListener('wheel', onWheel, false);
+  
+      
       const nodeItems = {};
       const edgePaths: paper.Path.Line[] = [];
       let redrawEdges: () => void;
@@ -227,8 +306,8 @@ export function DijkstraMap() {
           const asciiValues = keys.map(key => key.charCodeAt(0));
           const maxAscii = Math.max(...asciiValues);
           const minAscii = Math.min(...asciiValues);
-          const highestLetter = String.fromCharCode(maxAscii);
-          const lowestLetter = String.fromCharCode(minAscii);
+          highestLetter = String.fromCharCode(maxAscii);
+          lowestLetter = String.fromCharCode(minAscii);
 
           let circle;
           if (node === highestLetter || node === lowestLetter) {
@@ -239,31 +318,31 @@ export function DijkstraMap() {
                 rectangle: new paper.Rectangle(topLeftPosition, size),
             });
         
-            // Create a linear gradient that runs from the top-left to the bottom-right of the rectangle
             let gradient = new paper.Gradient(['#FFA07A', '#FFD700'], true);
             let gradientColor = new paper.Color(gradient, topLeftPosition, topLeftPosition.add(size));
             circle.fillColor = gradientColor;
         
-            // Add a shadow to the rectangle
             circle.shadowColor = new paper.Color(0, 0, 0);
             circle.shadowBlur = 12;
             circle.shadowOffset = new paper.Point(5, 5);
+
+
         } else {
             circle = new paper.Path.Circle({
                 center: position,
                 radius: 30,
             });
         
-            // Create a radial gradient that runs from the center to the edge of the circle
             let gradient = new paper.Gradient(['#FFA07A', '#FFD700'], false);
             let gradientColor = new paper.Color(gradient, position, position.add([30, 30]));
             circle.fillColor = gradientColor;
         
-            // Add a shadow to the circle
             circle.shadowColor = new paper.Color(0, 0, 0);
             circle.shadowBlur = 12;
             circle.shadowOffset = new paper.Point(5, 5);
         }
+        circle.data.nodeKey = node;
+
           circles.push(circle);
 
           let isDragging = false;
@@ -283,7 +362,7 @@ export function DijkstraMap() {
                 ...prevNodePositions,
                 [node]: newPosition
               }));
-              nodePositions[node] = newPosition; // Update the position in the local variable as well
+              nodePositions[node] = newPosition; 
               redrawEdges(node, newPosition);
             };
 
@@ -297,23 +376,18 @@ export function DijkstraMap() {
             circle.onClick = function () {
               console.log("jestem tutaj");
               console.log('switchEdit', switchEdit);
-              // stan switch edit w use effekcje
 
               if (trashIsClicked) {
                 const newGraph = { ...graph };
 
-                // Iterate over all nodes in the graph
                 for (let otherNode in newGraph) {
-                  // If the other node has a connection to the node to be deleted, remove it
                   if (newGraph[otherNode][node]) {
                     delete newGraph[otherNode][node];
                   }
                 }
 
-                // Delete the node itself
                 delete newGraph[node];
 
-                // Update the graph state
                 setGraph(newGraph);
                 return;
               }
@@ -358,14 +432,12 @@ export function DijkstraMap() {
                 } else {
                   const newSelectedNodes = [...prevSelectedNodes, node];
                   if (newSelectedNodes.length === 2) {
-                    // Add an edge between the two selected nodes
                     addEdge();
                   }
                   return newSelectedNodes;
                 }
               });
             };
-
 
           }
           nodeItems[node] = circle;
@@ -375,21 +447,29 @@ export function DijkstraMap() {
         redrawEdges = (movedNode, newPosition) => {
           edgePaths.forEach(path => path.remove());
           edgePaths.length = 0;
-          let addedTexts = {}; // Object to keep track of added texts
+          let addedTexts = {}; 
           Object.keys(graph).forEach(node => {
-            // Create a PointText for the node
+
+            let nodeContent = node.toUpperCase(); 
+
+            if (node === highestLetter) {
+              nodeContent = 'Koniec';
+            } else if (node === lowestLetter) {
+              nodeContent = 'Start';
+            }
+
             const nodeText = new paper.PointText({
               point: new paper.Point(
                 node === movedNode ? newPosition.x : nodePositions[node].x,
-                (node === movedNode ? newPosition.y : nodePositions[node].y) + 12 // Adjust the y-coordinate
+                (node === movedNode ? newPosition.y : nodePositions[node].y) + 12 // 
               ),
-              content: node.toUpperCase(), // Use the node as the content, converted to uppercase
+              content: nodeContent, // 
               fillColor: 'black',
               justification: 'center',
-              fontSize: 24, // Increase font size
-              fontWeight: 'bold' // Make the text bold
+              fontSize: 24, 
+              fontWeight: 'bold' // 
             });
-            edgePaths.push(nodeText);  // Add the node text to the edgePaths array
+            edgePaths.push(nodeText);  // 
 
             Object.keys(graph[node]).forEach(neighbor => {
               const path = new paper.Path.Line({
@@ -399,10 +479,10 @@ export function DijkstraMap() {
               });
               edgePaths.push(path);
 
-              // Create a unique identifier for the node pair
+              // 
               let nodePair = [node, neighbor].sort().join('-');
 
-              // Only add weight text if it hasn't been added for this pair
+              // 
               if (!addedTexts[nodePair]) {
                 const midPoint = path.getPointAt(path.length / 2);
                 const weightText = new paper.PointText({
@@ -412,8 +492,8 @@ export function DijkstraMap() {
                   justification: 'center',
                   fontSize: 18
                 });
-                edgePaths.push(weightText); // Add the weight text to the edgePaths array
-                addedTexts[nodePair] = true; // Mark this pair as having a text
+                edgePaths.push(weightText); // 
+                addedTexts[nodePair] = true; 
               }
             });
           });
@@ -422,18 +502,34 @@ export function DijkstraMap() {
       };
 
       drawGraph();
+      const handleResize = () => {
+        paper.view.viewSize = new paper.Size(window.innerWidth, window.innerHeight);
+        drawGraph();
+      };
+
       ////////////////////////////////////////////////////////////////////////////////
       window.addEventListener('resize', handleResize);
       return () => {
         window.removeEventListener('resize', handleResize);
+        paper.view.off('mousedown', onMouseDown);
+        paper.view.off('mousedrag', onMouseDrag);
+        paper.view.off('mouseup', onMouseUp);
+        paper.view.element.removeEventListener('wheel', onWheel);
+  
+        paper.project.clear();
+  
       };
     }
   }, [graph, selectedNodes, switchState, switchEdit, trashIsClicked]);
 
 
   useEffect(() => {
+    console.log("wezly ", selectedNodes)
+    changeNodeColor(selectedNodes[0], 'red', false);
     if (selectedNodes.length === 2) {
       addEdge();
+      // zmienia kolor obu wybranych węzłów na czerwony
+
     }
   }, [selectedNodes]);
 
