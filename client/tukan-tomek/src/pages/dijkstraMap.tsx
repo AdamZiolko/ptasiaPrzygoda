@@ -30,6 +30,7 @@ const useStyles = makeStyles((theme) => ({
   },
   primaryButton: {
     height: theme.spacing(7),
+    width: theme.spacing(12),
 
     right: theme.spacing(2),
   },
@@ -41,6 +42,12 @@ const useStyles = makeStyles((theme) => ({
     color: 'black',
     right: theme.spacing(14),
     bottom: theme.spacing(6),
+  },
+  randomButton: {
+    height: theme.spacing(7),
+    width: theme.spacing(12),
+    right: theme.spacing(2),
+    bottom: theme.spacing(11)
   },
   trashButton: {
     right: theme.spacing(46),
@@ -119,14 +126,36 @@ export function DijkstraMap() {
 
 
   const [nodePositions, setNodePositions] = useState({});
+  const [graph, setGraph] = useState({});
+  
 
-  const [graph, setGraph] = useState({
-    a: { b: 1, c: 4 },
-    b: { a: 1, d: 2, e: 5 },
-    c: { a: 4, d: 4 },
-    d: { b: 2, c: 4, e: 1 },
-    e: { b: 5, d: 1 }
-  });
+  const randomizeGraph = () => {
+    const nodesCount = Math.floor(Math.random() * 5) + 5;
+    const nodes = Array.from({length: nodesCount}, (_, i) => String.fromCharCode('a'.charCodeAt(0) + i));
+    const newGraph = {};
+  
+    nodes.forEach(node => {
+      newGraph[node] = {};
+      const otherNodes = nodes.filter(n => n !== node);
+      const connections = otherNodes.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 1);
+  
+      connections.forEach(connection => {
+        newGraph[node][connection] = Math.floor(Math.random() * 10) + 6;
+      });
+    });
+  
+    return newGraph;
+  }
+  
+
+  const initializeGraph = () => {
+    const newGraph = randomizeGraph();
+    setGraph(newGraph);
+  }
+  
+  useEffect(initializeGraph, []);
+
+
   let lastFrameTime = performance.now();
 
   const calculateFps = () => {
@@ -339,13 +368,7 @@ export function DijkstraMap() {
         const centerY = paper.view.size.height / 2;
         const radius = Math.min(centerX, centerY) * 0.8;
 
-
-
-
         drawPattern();
-
-
-
 
         const nodeCount = Object.keys(graph).length;
         Object.keys(graph).forEach((node, i) => {
@@ -375,11 +398,9 @@ export function DijkstraMap() {
             let gradient = new paper.Gradient(['#FFA07A', '#FFD700'], true);
             let gradientColor = new paper.Color(gradient, topLeftPosition, topLeftPosition.add(size));
             circle.fillColor = gradientColor;
-
             circle.shadowColor = new paper.Color(0, 0, 0);
             circle.shadowBlur = 12;
             circle.shadowOffset = new paper.Point(5, 5);
-
 
           } else {
             circle = new paper.Path.Circle({
@@ -400,8 +421,6 @@ export function DijkstraMap() {
           circles.push(circle);
 
           let isDragging = false;
-
-
 
           if (!switchState) {
             circle.onMouseDown = function (event) {
@@ -448,11 +467,7 @@ export function DijkstraMap() {
 
               if (switchEdit) {
                 setEditedNode(node);
-
-
-
                 changeAllCirclesColor('red');
-
 
                 let gradient = new paper.Gradient(['#FFA07A', '#9370DB'], false);
                 let gradientColor = new paper.Color(gradient, position, position.add([30, 30]));
@@ -498,6 +513,16 @@ export function DijkstraMap() {
         });
         let edgePaths: (paper.Path.Line | paper.PointText)[] = [];
 
+        function generateVine(from, to) {
+          const path = new paper.Path.Line(from, to);
+          path.strokeColor = 'green';
+          path.strokeWidth = 5; // Increase the width of the line to make it look more like a vine or bamboo
+          path.dashArray = [10, 10]; // Add dashes to the line to make it look segmented like a vine or bamboo
+        
+          return path;
+        }
+        
+
         redrawEdges = (movedNode, newPosition) => {
           edgePaths.forEach(path => path.remove());
           edgePaths.length = 0;
@@ -526,30 +551,37 @@ export function DijkstraMap() {
             edgePaths.push(nodeText);  // 
 
             Object.keys(graph[node]).forEach(neighbor => {
-              const path = new paper.Path.Line({
-                from: node === movedNode ? newPosition : nodePositions[node],
-                to: nodePositions[neighbor],
-                strokeColor: 'grey'
-              });
+              const path = generateVine(
+                node === movedNode ? newPosition : nodePositions[node],
+                nodePositions[neighbor]
+              );
               path.sendToBack();
               edgePaths.push(path);
 
-              // 
               let nodePair = [node, neighbor].sort().join('-');
 
-              // 
               if (!addedTexts[nodePair]) {
                 const midPoint = path.getPointAt(path.length / 2);
+                const weight = graph[node][neighbor];
                 const weightText = new paper.PointText({
-                  point: midPoint,
-                  content: graph[node][neighbor],
-                  fillColor: 'black',
-                  justification: 'center',
-                  fontSize: 18
+                    point: midPoint,
+                    content: weight,
+                    fillColor: 'black',
+                    justification: 'center',
+                    fontSize: 18
                 });
-                edgePaths.push(weightText); // 
+            
+                // Create a rectangle shape as background
+                const background = new paper.Path.Rectangle({
+                    rectangle: weightText.bounds.expand(10), // expand the bounds of the text by 10 units
+                    fillColor: 'rgba(255, 255, 255, 0.8)' // set the fill color to semi-transparent white                });
+                })
+                // Create a group with the background and the text
+                const group = new paper.Group([background, weightText]);
+            
+                edgePaths.push(group); // push the group to the edgePaths
                 addedTexts[nodePair] = true;
-              }
+            }
             });
           });
         };
@@ -594,7 +626,7 @@ export function DijkstraMap() {
       <div className="canvas-container">
         <canvas ref={canvasRef} className="full-page-canvas" />
         <Button variant="contained" color="primary" onClick={addNode} className={`${classes.floatingButton} ${classes.primaryButton}`}>+ węzeł</Button>
-
+        <Button variant="contained" color="secondary" onClick={initializeGraph} className={`${classes.floatingButton} ${classes.randomButton}`}>LOSUJ</Button>
 
         <FormControlLabel
           control={
@@ -611,7 +643,6 @@ export function DijkstraMap() {
           className={`${classes.floatingButton} ${classes.secondaryButton}`}
         />
 
-
         <FormControlLabel
           control={
             <Switch
@@ -627,7 +658,6 @@ export function DijkstraMap() {
           className={`${classes.floatingButton} ${classes.thirdButton}`}
         />
 
-
         <div className={` ${classes.fpsDisplay}`}>FPS: {fps}</div>
         <IconButton onClick={handleTrashClick} style={{ color: trashIsClicked ? 'red' : 'black' }} className={`${classes.floatingButton} ${classes.trashButton} ${classes.iconButton}`} >
           <SvgIcon>
@@ -635,9 +665,7 @@ export function DijkstraMap() {
           </SvgIcon>
         </IconButton>
 
-
         <div>
-          {/* ... */}
           <Dialog open={open} onClose={() => {
             const newGraph = { ...graph };
             newGraph[dialogContent.nodeName] = dialogContent.nodeConnections;
@@ -648,7 +676,7 @@ export function DijkstraMap() {
             <DialogContent>
               <DialogContentText>
                 <TextField
-                  label="Nazwa węzła"
+                  label="Nazwa węzła - zmiana duplikuje"
                   value={dialogContent.nodeName}
                   onChange={(e) => setDialogContent({ ...dialogContent, nodeName: e.target.value })}
                 />
