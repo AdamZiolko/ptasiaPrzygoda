@@ -1,11 +1,34 @@
 import React, { useEffect, useRef, useState } from 'react';
 import paper from 'paper';
 import './dijkstraMap.css';
-import { Button, createMuiTheme, createTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, IconButton, makeStyles, SvgIcon, TextField, ThemeProvider } from '@material-ui/core';
+import { Button, createMuiTheme, createTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, IconButton, makeStyles, SvgIcon, TextField, ThemeProvider, Typography } from '@material-ui/core';
 import Switch from '@material-ui/core/Switch';
 import { useMediaQuery } from 'react-responsive';
 import Snackbar from '@material-ui/core/Snackbar';
 import MuiAlert from '@material-ui/lab/Alert';
+import frame1 from '../assets/toucanFrames/frame1.png'
+import frame2 from '../assets/toucanFrames/frame2.png'
+import frame3 from '../assets/toucanFrames/frame3.png'
+import frame4 from '../assets/toucanFrames/frame4.png'
+import frame5 from '../assets/toucanFrames/frame5.png'
+import frame6 from '../assets/toucanFrames/frame6.png'
+import frame7 from '../assets/toucanFrames/frame7.png'
+import frame8 from '../assets/toucanFrames/frame8.png'
+import frame9 from '../assets/toucanFrames/frame9.png'
+import frame10 from '../assets/toucanFrames/frame10.png'
+import frame11 from '../assets/toucanFrames/frame11.png'
+import frame12 from '../assets/toucanFrames/frame12.png'
+import { CircularProgress, Box } from '@material-ui/core';
+import { FileCopy } from '@material-ui/icons';
+
+
+
+const imageUrls = [frame1, frame2, frame3, frame4, frame5, frame6, frame7, frame8, frame9, frame10, frame11];
+
+
+
+
+
 
 const theme = createTheme({
   palette: {
@@ -15,6 +38,10 @@ const theme = createTheme({
     secondary: {
       main: '#f50057',
     },
+    grey: {
+      main: '#f5f5f5',
+    },
+
   },
 });
 
@@ -49,6 +76,18 @@ const useStyles = makeStyles((theme) => ({
     right: theme.spacing(2),
     bottom: theme.spacing(11)
   },
+  countButton: {
+    height: theme.spacing(7),
+    width: theme.spacing(12),
+    right: theme.spacing(2),
+    bottom: theme.spacing(20)
+  },
+  saveButton: {
+    height: theme.spacing(7),
+    width: theme.spacing(12),
+    right: theme.spacing(2),
+    bottom: theme.spacing(29)
+  },
   trashButton: {
     right: theme.spacing(46),
     width: theme.spacing(7),
@@ -72,6 +111,9 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 
+
+
+
 export function DijkstraMap() {
   const classes = useStyles();
   const [fps, setFps] = useState(0);
@@ -85,6 +127,9 @@ export function DijkstraMap() {
   const [nodeToDeletion, setNodeToDeletion] = useState(null);
   const [trashIsClicked, setTrashIsClicked] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [toucanAnimation, setToucanAnimation] = useState(null);
+
+
   let highestLetter = '';
   let lowestLetter = '';
 
@@ -127,32 +172,32 @@ export function DijkstraMap() {
 
   const [nodePositions, setNodePositions] = useState({});
   const [graph, setGraph] = useState({});
-  
+
 
   const randomizeGraph = () => {
     const nodesCount = Math.floor(Math.random() * 5) + 5;
-    const nodes = Array.from({length: nodesCount}, (_, i) => String.fromCharCode('a'.charCodeAt(0) + i));
+    const nodes = Array.from({ length: nodesCount }, (_, i) => String.fromCharCode('a'.charCodeAt(0) + i));
     const newGraph = {};
-  
+
     nodes.forEach(node => {
       newGraph[node] = {};
       const otherNodes = nodes.filter(n => n !== node);
       const connections = otherNodes.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 1);
-  
+
       connections.forEach(connection => {
         newGraph[node][connection] = Math.floor(Math.random() * 10) + 6;
       });
     });
-  
+
     return newGraph;
   }
-  
+
 
   const initializeGraph = () => {
     const newGraph = randomizeGraph();
     setGraph(newGraph);
   }
-  
+
   useEffect(initializeGraph, []);
 
 
@@ -224,6 +269,9 @@ export function DijkstraMap() {
     });
   }
 
+
+
+
   function changeNodeColor(nodeKey: string, color: string, i: boolean = true) {
     if (i) {
       circles.forEach(circle => {
@@ -252,6 +300,51 @@ export function DijkstraMap() {
     }
   }
 
+
+
+  let animationInterval: string | number | NodeJS.Timeout | null | undefined = null;
+  let frames: any[] = [];
+  let xddd = 0
+  const renderAnimation = (imageUrls, position, scale = 0.5) => {
+    if (!imageUrls || imageUrls.length === 0) {
+      console.error('No image URLs provided');
+      return;
+    }
+
+    if (!position) {
+      console.error('No position provided');
+      return;
+    }
+
+    // Clear the previous animation if it's still running
+    if (animationInterval) {
+      clearInterval(animationInterval);
+      frames.forEach(frame => frame.remove()); // remove previous frames
+      frames = []; // reset frames array
+    }
+
+    const url = imageUrls[0]; // Only take the first URL
+
+    const raster = new paper.Raster({
+      source: url,
+      position: position,
+      onLoad: () => {
+        raster.scale(scale); // scale the image
+        paper.project.activeLayer.addChild(raster);
+        raster.visible = true; // show the image
+      },
+      onError: () => {
+        console.error(`Failed to load image from URL: ${url}`);
+      }
+    });
+
+    frames.push(raster);
+
+    return { frames };
+  }
+
+
+
   ///////////////////////////////////////////////////////////////////////
   useEffect(() => {
     if (canvasRef.current) {
@@ -259,7 +352,6 @@ export function DijkstraMap() {
       paper.view.viewSize = new paper.Size(window.innerWidth, window.innerHeight);
 
       let pattern: paper.Group;
-
 
 
 
@@ -316,6 +408,8 @@ export function DijkstraMap() {
       paper.view.onMouseUp = onMouseUp;
       paper.view.element.addEventListener('wheel', onWheel, false);
 
+      let lol = null;
+
       const drawPattern = () => {
         if (pattern) {
           pattern.remove();
@@ -360,15 +454,26 @@ export function DijkstraMap() {
       const edgePaths: paper.Path.Line[] = [];
       let redrawEdges: () => void;
 
+      let lastTime = 0;
+      const fpsInterval = 1000 / 30; // 30 FPS
 
       const drawGraph = () => {
+
         paper.project.clear();
 
         const centerX = paper.view.size.width / 2;
         const centerY = paper.view.size.height / 2;
         const radius = Math.min(centerX, centerY) * 0.8;
 
+
+        // Call the renderAnimation function after clearing the project
+
+
         drawPattern();
+        // if (animationInterval) {
+        //   clearInterval(animationInterval);
+        // }
+        // if(xddd==0) renderAnimation(imageUrls, new paper.Point(200, 200 + xddd));
 
         const nodeCount = Object.keys(graph).length;
         Object.keys(graph).forEach((node, i) => {
@@ -399,7 +504,7 @@ export function DijkstraMap() {
             let gradientColor = new paper.Color(gradient, topLeftPosition, topLeftPosition.add(size));
             circle.fillColor = gradientColor;
             circle.shadowColor = new paper.Color(0, 0, 0);
-            circle.shadowBlur = 12;
+            circle.shadowBlur = 11;
             circle.shadowOffset = new paper.Point(5, 5);
 
           } else {
@@ -518,10 +623,10 @@ export function DijkstraMap() {
           path.strokeColor = 'green';
           path.strokeWidth = 5; // Increase the width of the line to make it look more like a vine or bamboo
           path.dashArray = [10, 10]; // Add dashes to the line to make it look segmented like a vine or bamboo
-        
+
           return path;
         }
-        
+
 
         redrawEdges = (movedNode, newPosition) => {
           edgePaths.forEach(path => path.remove());
@@ -564,31 +669,37 @@ export function DijkstraMap() {
                 const midPoint = path.getPointAt(path.length / 2);
                 const weight = graph[node][neighbor];
                 const weightText = new paper.PointText({
-                    point: midPoint,
-                    content: weight,
-                    fillColor: 'black',
-                    justification: 'center',
-                    fontSize: 18
+                  point: midPoint,
+                  content: weight,
+                  fillColor: 'black',
+                  justification: 'center',
+                  fontSize: 18
                 });
-            
+
                 // Create a rectangle shape as background
                 const background = new paper.Path.Rectangle({
-                    rectangle: weightText.bounds.expand(10), // expand the bounds of the text by 10 units
-                    fillColor: 'rgba(255, 255, 255, 0.8)' // set the fill color to semi-transparent white                });
+                  rectangle: weightText.bounds.expand(10), // expand the bounds of the text by 10 units
+                  fillColor: 'rgba(255, 255, 255, 0.8)' // set the fill color to semi-transparent white                });
                 })
                 // Create a group with the background and the text
                 const group = new paper.Group([background, weightText]);
-            
+
                 edgePaths.push(group); // push the group to the edgePaths
                 addedTexts[nodePair] = true;
-            }
+              }
             });
           });
         };
         redrawEdges();
+
+
+        ;
+
       };
 
+
       drawGraph();
+
       const handleResize = () => {
         paper.view.viewSize = new paper.Size(window.innerWidth, window.innerHeight);
         drawGraph();
@@ -604,7 +715,6 @@ export function DijkstraMap() {
         paper.view.element.removeEventListener('wheel', onWheel);
 
         paper.project.clear();
-
       };
     }
   }, [graph, selectedNodes, switchState, switchEdit, trashIsClicked]);
@@ -621,13 +731,60 @@ export function DijkstraMap() {
   }, [selectedNodes]);
 
 
+  const [responseData, setResponseData] = useState('');
+
+
+  const [open1, setOpen1] = useState(false);
+
+  const handleSave = async () => {
+    const response = await fetch('http://localhost:3333/dijkstra/dijkstraGraph', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(graph),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to save graph');
+      return;
+    }
+
+    const data = await response.text();
+    setResponseData(data);
+    setOpen1(true); // Open the dialog box after the response is received
+    console.log(responseData)
+  };
+
+  const findPath = async () => {
+    const response = await fetch('http://localhost:3333/dijkstra/findPath', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(graph),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to find path');
+      return;
+    }
+
+    const path = await response.json();
+    console.log(path); // Log the response
+
+    return path;
+  };
+
+
   return (
     <ThemeProvider theme={theme}>
       <div className="canvas-container">
         <canvas ref={canvasRef} className="full-page-canvas" />
         <Button variant="contained" color="primary" onClick={addNode} className={`${classes.floatingButton} ${classes.primaryButton}`}>+ węzeł</Button>
         <Button variant="contained" color="secondary" onClick={initializeGraph} className={`${classes.floatingButton} ${classes.randomButton}`}>LOSUJ</Button>
-
+        <Button variant="contained" color="grey" onClick={findPath} className={`${classes.floatingButton} ${classes.countButton}`}>OBLICZ</Button>
+        <Button variant="contained" style={{ backgroundColor: '#90ee90' }} onClick={handleSave} className={`${classes.floatingButton} ${classes.saveButton}`}>ZAPISZ</Button>
         <FormControlLabel
           control={
             <Switch
@@ -735,6 +892,30 @@ export function DijkstraMap() {
                 Zapisz
               </Button>
             </DialogActions>
+          </Dialog>
+          <Dialog open={open1} onClose={() => setOpen1(false)}>
+            <DialogTitle>Link do twojej mapy</DialogTitle>
+            <DialogContent style={{ padding: '20px' }}>
+              {responseData ? (
+                <>
+                  <Typography variant="body1" style={{ marginBottom: '15px' }}>
+                    {responseData}
+                  </Typography>
+                  <DialogActions>
+                    <IconButton onClick={() => navigator.clipboard.writeText(responseData)} className={classes.iconButton}>
+                      <FileCopy />
+                    </IconButton>
+                    <Button onClick={() => setOpen1(false)} color="primary">
+                      Zamknij
+                    </Button>
+                  </DialogActions>
+                </>
+              ) : (
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="100px">
+                  <CircularProgress />
+                </Box>
+              )}
+            </DialogContent>
           </Dialog>
         </div>
 
