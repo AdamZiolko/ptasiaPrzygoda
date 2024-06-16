@@ -1,3 +1,4 @@
+// edge.entity.ts
 import { Entity, PrimaryKey, Property, Index, ManyToOne } from '@mikro-orm/core';
 import { Graph } from './graph.entity';
 
@@ -10,12 +11,12 @@ export class Edge {
   graph!: Graph;
 
   @Index()
-  @Property()
-  node!: number;
+  @Property({ columnType: 'varchar(3)' })
+  node!: string;
 
   @Index()
-  @Property()
-  connectedNode!: number;
+  @Property({ columnType: 'varchar(3)' })
+  connectedNode!: string;
 
   @Property()
   weight!: number;

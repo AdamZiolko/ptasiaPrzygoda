@@ -71,21 +71,21 @@
         },
         "node": {
           "name": "node",
-          "type": "int",
+          "type": "varchar(3)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "integer"
+          "mappedType": "string"
         },
         "connected_node": {
           "name": "connected_node",
-          "type": "int",
+          "type": "varchar(3)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "integer"
+          "mappedType": "string"
         },
         "weight": {
           "name": "weight",

@@ -15,28 +15,21 @@ export class DijkstraService {
         graph.hash = uuidv4();
         await this.em.persistAndFlush(graph);
     
-        const nodeMapping: Record<string, number> = {};
-        let nextNodeId = 1;
-        for (const node of Object.keys(graphData)) {
-            nodeMapping[node] = nextNodeId++;
-        }
-    
         for (const [node, connections] of Object.entries(graphData)) {
             for (const [connectedNode, weight] of Object.entries(connections)) {
                 const edge = new Edge();
                 edge.graph = graph;
-                edge.node = nodeMapping[node];
-                edge.connectedNode = nodeMapping[connectedNode];
+                edge.node = node;
+                edge.connectedNode = connectedNode;
                 edge.weight = weight;
                 await this.em.persistAndFlush(edge);
             }
         }
-
+    
         return graph.hash;
-
     }
 
-    async findGraph(graphHash: string): Promise<Record<string, object>> {
+    async findGraph(graphHash: string): Promise<Record<string, Record<string, number>>> {
         const graph = await this.em.findOne(Graph, { hash: graphHash });
         if (!graph) {
             throw new Error('Graph not found');
@@ -44,12 +37,12 @@ export class DijkstraService {
     
         const edges = await this.em.find(Edge, { graph });
     
-        const edgeData: Record<string, object> = {};
+        const edgeData: Record<string, Record<string, number>> = {};
         for (const edge of edges) {
             if (!edgeData[edge.node]) {
                 edgeData[edge.node] = {};
             }
-            edgeData[edge.node][edge.connectedNode] = { weight: edge.weight };
+            edgeData[edge.node][edge.connectedNode] = edge.weight;
         }
     
         return edgeData;

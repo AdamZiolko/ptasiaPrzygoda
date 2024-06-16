@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import paper from 'paper';
 import './dijkstraMap.css';
-import { Button, createMuiTheme, createTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, IconButton, makeStyles, SvgIcon, TextField, ThemeProvider, Typography } from '@material-ui/core';
+import { Button, Card, CardContent, createMuiTheme, createTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, IconButton, makeStyles, SvgIcon, TextField, ThemeProvider, Typography } from '@material-ui/core';
 import Switch from '@material-ui/core/Switch';
 import { useMediaQuery } from 'react-responsive';
 import Snackbar from '@material-ui/core/Snackbar';
@@ -20,6 +20,7 @@ import frame11 from '../assets/toucanFrames/frame11.png'
 import frame12 from '../assets/toucanFrames/frame12.png'
 import { CircularProgress, Box } from '@material-ui/core';
 import { FileCopy } from '@material-ui/icons';
+import { useParams } from 'react-router-dom';
 
 
 
@@ -115,6 +116,7 @@ const useStyles = makeStyles((theme) => ({
 
 
 export function DijkstraMap() {
+  let { id } = useParams();
   const classes = useStyles();
   const [fps, setFps] = useState(0);
   const [selectedNodes, setSelectedNodes] = useState([]);
@@ -128,7 +130,9 @@ export function DijkstraMap() {
   const [trashIsClicked, setTrashIsClicked] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [toucanAnimation, setToucanAnimation] = useState(null);
+  const [pathData, setPathData] = useState({ distance: 0, path: [] });
 
+  const [showPath, setShowPath] = useState(false);
 
   let highestLetter = '';
   let lowestLetter = '';
@@ -172,7 +176,24 @@ export function DijkstraMap() {
 
   const [nodePositions, setNodePositions] = useState({});
   const [graph, setGraph] = useState({});
+  const [graphData, setGraphData] = useState(null);
 
+  useEffect(() => {
+    const fetchGraphData = async () => {
+      const response = await fetch(`http://localhost:3333/dijkstra/dijkstraGraph/${id}`);
+
+      if (!response.ok) {
+        console.error('Failed to fetch graph data');
+        return;
+      }
+
+      const data = await response.json();
+      setGraph(data);
+      console.log(data)
+    };
+
+    fetchGraphData();
+  }, []);
 
   const randomizeGraph = () => {
     const nodesCount = Math.floor(Math.random() * 5) + 5;
@@ -194,12 +215,13 @@ export function DijkstraMap() {
 
 
   const initializeGraph = () => {
-    const newGraph = randomizeGraph();
-    setGraph(newGraph);
+      const newGraph = randomizeGraph();
+      setGraph(newGraph);
+
   }
-
-  useEffect(initializeGraph, []);
-
+if(!id){
+  useEffect(initializeGraph, [graphData]);
+}
 
   let lastFrameTime = performance.now();
 
@@ -316,22 +338,21 @@ export function DijkstraMap() {
       return;
     }
 
-    // Clear the previous animation if it's still running
     if (animationInterval) {
       clearInterval(animationInterval);
-      frames.forEach(frame => frame.remove()); // remove previous frames
-      frames = []; // reset frames array
+      frames.forEach(frame => frame.remove());
+      frames = [];
     }
 
-    const url = imageUrls[0]; // Only take the first URL
+    const url = imageUrls[0];
 
     const raster = new paper.Raster({
       source: url,
       position: position,
       onLoad: () => {
-        raster.scale(scale); // scale the image
+        raster.scale(scale);
         paper.project.activeLayer.addChild(raster);
-        raster.visible = true; // show the image
+        raster.visible = true;
       },
       onError: () => {
         console.error(`Failed to load image from URL: ${url}`);
@@ -466,7 +487,6 @@ export function DijkstraMap() {
         const radius = Math.min(centerX, centerY) * 0.8;
 
 
-        // Call the renderAnimation function after clearing the project
 
 
         drawPattern();
@@ -618,12 +638,15 @@ export function DijkstraMap() {
         });
         let edgePaths: (paper.Path.Line | paper.PointText)[] = [];
 
-        function generateVine(from, to) {
+        function generateVine(from, to, color = 'green') {
           const path = new paper.Path.Line(from, to);
-          path.strokeColor = 'green';
-          path.strokeWidth = 5; // Increase the width of the line to make it look more like a vine or bamboo
-          path.dashArray = [10, 10]; // Add dashes to the line to make it look segmented like a vine or bamboo
-
+          path.strokeColor = color;
+          path.strokeWidth = 5;
+          
+          if (color === 'green') {
+            path.dashArray = [10, 10];
+          }
+        
           return path;
         }
 
@@ -656,9 +679,11 @@ export function DijkstraMap() {
             edgePaths.push(nodeText);  // 
 
             Object.keys(graph[node]).forEach(neighbor => {
+              const isOptimalPath = pathData.path.includes(node) && pathData.path.includes(neighbor);
               const path = generateVine(
                 node === movedNode ? newPosition : nodePositions[node],
-                nodePositions[neighbor]
+                nodePositions[neighbor],
+                isOptimalPath ? 'red' : 'green'
               );
               path.sendToBack();
               edgePaths.push(path);
@@ -676,15 +701,13 @@ export function DijkstraMap() {
                   fontSize: 18
                 });
 
-                // Create a rectangle shape as background
                 const background = new paper.Path.Rectangle({
-                  rectangle: weightText.bounds.expand(10), // expand the bounds of the text by 10 units
-                  fillColor: 'rgba(255, 255, 255, 0.8)' // set the fill color to semi-transparent white                });
+                  rectangle: weightText.bounds.expand(10),
+                  fillColor: 'rgba(255, 255, 255, 0.8)' //      });
                 })
-                // Create a group with the background and the text
                 const group = new paper.Group([background, weightText]);
 
-                edgePaths.push(group); // push the group to the edgePaths
+                edgePaths.push(group);
                 addedTexts[nodePair] = true;
               }
             });
@@ -717,7 +740,7 @@ export function DijkstraMap() {
         paper.project.clear();
       };
     }
-  }, [graph, selectedNodes, switchState, switchEdit, trashIsClicked]);
+  }, [graph, selectedNodes, switchState, switchEdit, trashIsClicked, pathData]);
 
 
   useEffect(() => {
@@ -729,7 +752,6 @@ export function DijkstraMap() {
 
     }
   }, [selectedNodes]);
-
 
   const [responseData, setResponseData] = useState('');
 
@@ -752,9 +774,12 @@ export function DijkstraMap() {
 
     const data = await response.text();
     setResponseData(data);
-    setOpen1(true); // Open the dialog box after the response is received
+    setOpen1(true);
     console.log(responseData)
   };
+
+
+
 
   const findPath = async () => {
     const response = await fetch('http://localhost:3333/dijkstra/findPath', {
@@ -771,10 +796,18 @@ export function DijkstraMap() {
     }
 
     const path = await response.json();
-    console.log(path); // Log the response
+    setPathData(path)
+    console.log(pathData);
+    setShowPath(true);
 
     return path;
   };
+
+
+  useEffect(() => {
+    setShowPath(false);
+    setPathData({ distance: 0, path: [] })
+  }, [graph]);
 
 
   return (
@@ -785,6 +818,18 @@ export function DijkstraMap() {
         <Button variant="contained" color="secondary" onClick={initializeGraph} className={`${classes.floatingButton} ${classes.randomButton}`}>LOSUJ</Button>
         <Button variant="contained" color="grey" onClick={findPath} className={`${classes.floatingButton} ${classes.countButton}`}>OBLICZ</Button>
         <Button variant="contained" style={{ backgroundColor: '#90ee90' }} onClick={handleSave} className={`${classes.floatingButton} ${classes.saveButton}`}>ZAPISZ</Button>
+
+        {showPath && (
+          <Card style={{ position: 'absolute', top: '10px', right: '10px' }}>
+            <CardContent>
+              <Typography variant="h6">Najlepsza ścieżka</Typography>
+              <Typography variant="body1">{pathData.path.join(' -> ')}</Typography>
+              <Typography variant="h6">Dystans</Typography>
+              <Typography variant="body1">{pathData.distance}</Typography>
+            </CardContent>
+          </Card>
+        )}
+
         <FormControlLabel
           control={
             <Switch
@@ -899,10 +944,10 @@ export function DijkstraMap() {
               {responseData ? (
                 <>
                   <Typography variant="body1" style={{ marginBottom: '15px' }}>
-                    {responseData}
+                  http://localhost:5173/graph/{responseData}
                   </Typography>
                   <DialogActions>
-                    <IconButton onClick={() => navigator.clipboard.writeText(responseData)} className={classes.iconButton}>
+                    <IconButton onClick={() => navigator.clipboard.writeText("http://localhost:5173/graph/" +responseData)} className={classes.iconButton}>
                       <FileCopy />
                     </IconButton>
                     <Button onClick={() => setOpen1(false)} color="primary">

@@ -17,7 +17,7 @@ export class DijkstraController {
     }
 
     @Get('dijkstraGraph/:graphHash')
-    getGraph(@Param('graphHash') graphHash: string): Promise<Record<string, object>> {
+    getGraph(@Param('graphHash') graphHash: string): Promise<Record<string, Record<string, number>>> {
         return this.dijkstraServicey.findGraph(graphHash);
     }
 

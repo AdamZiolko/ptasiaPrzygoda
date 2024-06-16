@@ -23,11 +23,11 @@ function AppRouter() {
 
   return (
     <Router>
-<div style={{position: 'fixed', left: '10px', bottom: '50%', color:'black'}}>
-  <IconButton edge="start" color="inherit" aria-label="ArrowForwardIosSharp" onClick={toggleDrawer}>
-    <ArrowForwardIosSharp />
-  </IconButton>
-</div>
+      <div style={{ position: 'fixed', left: '10px', bottom: '50%', color: 'black' }}>
+        <IconButton edge="start" color="inherit" aria-label="ArrowForwardIosSharp" onClick={toggleDrawer}>
+          <ArrowForwardIosSharp />
+        </IconButton>
+      </div>
       <Drawer open={drawerOpen} onClose={toggleDrawer} anchor="left">
         <List>
           <ListItem button component={Link} to="/" onClick={toggleDrawer}>
@@ -36,14 +36,11 @@ function AppRouter() {
           <ListItem button component={Link} to="/products/1" onClick={toggleDrawer}>
             <ListItemText primary="First Product" />
           </ListItem>
-          <ListItem button component={Link} to="/products/2" onClick={toggleDrawer}>
-            <ListItemText primary="Second Product" />
-          </ListItem>
         </List>
       </Drawer>
       <Routes>
-        <Route path="/"  element={<DijkstraMap />} />
-        <Route path="/products/:id" element={<Product />} />
+        <Route path="/" element={<DijkstraMap />} />
+        <Route path="/graph/:id" element={<DijkstraMap />} />
       </Routes>
     </Router>
   );
