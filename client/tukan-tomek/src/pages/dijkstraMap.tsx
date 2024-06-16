@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import paper from 'paper';
 import './dijkstraMap.css';
 import { Button, Card, CardContent, createMuiTheme, createTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, IconButton, makeStyles, SvgIcon, TextField, ThemeProvider, Typography } from '@material-ui/core';
@@ -192,7 +192,7 @@ export function DijkstraMap() {
       console.log(data)
     };
 
-    fetchGraphData();
+    if (id != undefined) fetchGraphData();
   }, []);
 
   const randomizeGraph = () => {
@@ -215,13 +215,13 @@ export function DijkstraMap() {
 
 
   const initializeGraph = () => {
-      const newGraph = randomizeGraph();
-      setGraph(newGraph);
+    const newGraph = randomizeGraph();
+    setGraph(newGraph);
 
   }
-if(!id){
-  useEffect(initializeGraph, [graphData]);
-}
+  if (id == undefined) {
+    useEffect(initializeGraph, [graphData]);
+  }
 
   let lastFrameTime = performance.now();
 
@@ -324,10 +324,85 @@ if(!id){
 
 
 
-  let animationInterval: string | number | NodeJS.Timeout | null | undefined = null;
-  let frames: any[] = [];
-  let xddd = 0
-  const renderAnimation = (imageUrls, position, scale = 0.5) => {
+  const [snackbar2Open, setSnackbar2Open] = useState(false);
+
+  const [birdPosition, setBirdPosition] = useState(new paper.Point(0, 0));
+
+  let birdPositions = [
+    new paper.Point(0, 0),
+    new paper.Point(100, 100),
+    new paper.Point(-200, -200),
+  ];
+
+  useLayoutEffect(() => {
+
+    const newBirdPositions: paper.Point[] = pathData.path.map(id => nodePositions[id]);
+    console.log(newBirdPositions)
+    if (showPath) {
+      birdPositions = [...newBirdPositions];
+      setSnackbar2Open(true);
+
+    }
+  }, [pathData, showPath]);
+
+
+
+
+  let frameIndex = 0;
+  let imageUrlsLength = 11;
+
+  const updateFrameIndex = () => {
+    frameIndex = (frameIndex + 1) % imageUrlsLength;
+    updateBirdPosition();
+  };
+
+  let currentPositionIndex = 0;
+
+  const updateBirdPosition = () => {
+    const targetPosition = birdPositions[currentPositionIndex];
+    const direction = targetPosition.subtract(birdPosition).normalize();
+
+    birdPosition.x += direction.x * 5;
+    birdPosition.y += direction.y * 5;
+
+    if (birdPosition.getDistance(targetPosition) < 5) {
+      currentPositionIndex = (currentPositionIndex + 1) % birdPositions.length;
+    }
+  };
+  let intervalId: string | number | NodeJS.Timeout | null | undefined = null;
+
+  const startAnimation = () => {
+    if (intervalId !== null) {
+      clearInterval(intervalId);
+    }
+
+    intervalId = setInterval(() => {
+      updateFrameIndex();
+      renderAnimation(imageUrls);
+    }, 100);
+  };
+
+  useEffect(() => {
+    startAnimation();
+
+    return () => {
+      clearInterval(intervalId);
+      resetAnimation();
+    };
+  }, []);
+  let previousRasters = [];
+
+  let rasters = [];
+
+  const resetAnimation = () => {
+    rasters = [];
+    frameIndex = 0;
+    clearInterval(intervalId)
+  };
+
+  const renderAnimation = (imageUrls, scale = 0.25) => {
+    const position = birdPosition;
+
     if (!imageUrls || imageUrls.length === 0) {
       console.error('No image URLs provided');
       return;
@@ -338,33 +413,43 @@ if(!id){
       return;
     }
 
-    if (animationInterval) {
-      clearInterval(animationInterval);
-      frames.forEach(frame => frame.remove());
-      frames = [];
+    if (frameIndex < 0 || frameIndex >= imageUrls.length) {
+      console.error('Invalid frame index');
+      return;
     }
 
-    const url = imageUrls[0];
+    if (rasters.length === 0) {
+      imageUrls.forEach((url, index) => {
+        const raster = new paper.Raster({
+          source: url,
+          position: position,
+          onLoad: () => {
+            raster.scale(scale);
+            paper.project.activeLayer.addChild(raster);
+            raster.visible = index === 0; 
+          },
+          onError: () => {
+            console.error(`Failed to load image from URL: ${url}`);
+          }
+        });
+        rasters.push(raster);
+      });
+    }
 
-    const raster = new paper.Raster({
-      source: url,
-      position: position,
-      onLoad: () => {
-        raster.scale(scale);
-        paper.project.activeLayer.addChild(raster);
-        raster.visible = true;
-      },
-      onError: () => {
-        console.error(`Failed to load image from URL: ${url}`);
-      }
+    rasters.forEach(raster => raster.visible = false);
+
+    rasters[frameIndex].visible = true;
+    rasters.forEach((raster, index) => {
+      raster.position = position;
+      raster.visible = index === frameIndex;
     });
-
-    frames.push(raster);
-
-    return { frames };
-  }
+    return { frames: [rasters[frameIndex]] };
+  };
 
 
+
+
+  const [viewState, setViewState] = useState({ center: new paper.Point(window.innerWidth / 2, window.innerHeight / 2), zoom: 1 });
 
   ///////////////////////////////////////////////////////////////////////
   useEffect(() => {
@@ -373,8 +458,9 @@ if(!id){
       paper.view.viewSize = new paper.Size(window.innerWidth, window.innerHeight);
 
       let pattern: paper.Group;
-
-
+      paper.view.center = viewState.center;
+      paper.view.zoom = viewState.zoom;
+      startAnimation()
 
 
       let middleButtonPressed = false;
@@ -394,9 +480,9 @@ if(!id){
       const onMouseDrag = function (event) {
         if (middleButtonPressed) {
           event.preventDefault();
-          const delta = event.point.subtract(lastPoint);
-          const newCenter = paper.view.center.subtract(delta);
-          paper.view.center = paper.view.center.add(newCenter.subtract(paper.view.center).multiply(lerpFactor));
+          const delta = event.point.subtract(lastPoint).multiply(lerpFactor);
+          paper.view.center = paper.view.center.subtract(delta);
+
           lastPoint = event.point;
 
         }
@@ -406,6 +492,7 @@ if(!id){
         if (event.event.button === 1) {
           middleButtonPressed = false;
           document.body.style.cursor = 'default';
+
         }
       }
 
@@ -422,6 +509,7 @@ if(!id){
         }
 
         paper.view.center = oldCenter;
+
       }
 
       paper.view.onMouseDown = onMouseDown;
@@ -437,6 +525,7 @@ if(!id){
         }
 
         const stripesGroup = new paper.Group();
+        const grassGroup = new paper.Group();
 
         const topLeft = new paper.Point(-10000, -10000);
         const bottomRight = new paper.Point(10000, 10000);
@@ -467,8 +556,12 @@ if(!id){
           stripesGroup.addChild(newStripe);
         }
 
-        paper.project.activeLayer.addChild(stripesGroup);
+        // Add random grass elements
 
+        paper.project.activeLayer.addChild(stripesGroup);
+        paper.project.activeLayer.addChild(grassGroup);
+
+        // Set the background color to a light green color
         pattern = stripesGroup;
       };
       const nodeItems = {};
@@ -488,12 +581,12 @@ if(!id){
 
 
 
+        // renderAnimation(imageUrls, new paper.Point(210+frameIndex, 200));
 
         drawPattern();
         // if (animationInterval) {
         //   clearInterval(animationInterval);
         // }
-        // if(xddd==0) renderAnimation(imageUrls, new paper.Point(200, 200 + xddd));
 
         const nodeCount = Object.keys(graph).length;
         Object.keys(graph).forEach((node, i) => {
@@ -561,8 +654,11 @@ if(!id){
                 [node]: newPosition
               }));
               nodePositions[node] = newPosition;
+
               redrawEdges(node, newPosition);
             };
+
+
 
             circle.onMouseUp = function (event) {
               if (isDragging) {
@@ -642,11 +738,11 @@ if(!id){
           const path = new paper.Path.Line(from, to);
           path.strokeColor = color;
           path.strokeWidth = 5;
-          
+
           if (color === 'green') {
             path.dashArray = [10, 10];
           }
-        
+
           return path;
         }
 
@@ -736,11 +832,12 @@ if(!id){
         paper.view.off('mousedrag', onMouseDrag);
         paper.view.off('mouseup', onMouseUp);
         paper.view.element.removeEventListener('wheel', onWheel);
+        resetAnimation()
 
         paper.project.clear();
       };
     }
-  }, [graph, selectedNodes, switchState, switchEdit, trashIsClicked, pathData]);
+  }, [graph, selectedNodes, switchState, switchEdit, trashIsClicked, pathData, viewState]);
 
 
   useEffect(() => {
@@ -944,10 +1041,10 @@ if(!id){
               {responseData ? (
                 <>
                   <Typography variant="body1" style={{ marginBottom: '15px' }}>
-                  http://localhost:5173/graph/{responseData}
+                    http://localhost:5173/graph/{responseData}
                   </Typography>
                   <DialogActions>
-                    <IconButton onClick={() => navigator.clipboard.writeText("http://localhost:5173/graph/" +responseData)} className={classes.iconButton}>
+                    <IconButton onClick={() => navigator.clipboard.writeText("http://localhost:5173/graph/" + responseData)} className={classes.iconButton}>
                       <FileCopy />
                     </IconButton>
                     <Button onClick={() => setOpen1(false)} color="primary">
@@ -973,6 +1070,17 @@ if(!id){
       >
         <MuiAlert onClose={() => setSnackbarOpen(false)} severity="error">
           Tryb usuwania włączony! Kliknij na węzeł, aby go usunąć.
+        </MuiAlert>
+      </Snackbar>
+
+      <Snackbar
+        open={snackbar2Open}
+        autoHideDuration={9000}
+        onClose={() => setSnackbar2Open(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <MuiAlert onClose={() => setSnackbar2Open(false)} severity="success">
+          Tukan teraz przejdzie przez wybraną trasę.
         </MuiAlert>
       </Snackbar>
     </ThemeProvider>

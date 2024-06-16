@@ -5,13 +5,25 @@ import IconButton from '@material-ui/core/IconButton';
 import MenuIcon from '@material-ui/icons/Menu';
 import { ArrowBackIosOutlined, ArrowForwardIosSharp } from '@material-ui/icons';
 import { DijkstraMap } from './pages/dijkstraMap';
+import { Typography } from '@material-ui/core';
+import { Card, CardContent } from '@material-ui/core';
 
 function Index() {
   return <h2>Home</h2>;
 }
 
-function Product() {
-  return <h2>This is a page for product with ID: </h2>;
+function Legend() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' , width: '100vw'}}>
+      <Card style={{ width: '80%', alignSelf: 'center', margin: '0 auto' }}>
+        <CardContent>
+          <Typography variant="h5" style={{ textAlign: 'center' }}>
+            W trybie rysowania można usuwać, aby poruszać się po mapie należy naciskać scrolla jak i zoomować.
+          </Typography>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function AppRouter() {
@@ -34,13 +46,15 @@ function AppRouter() {
             <ListItemText primary="Home" />
           </ListItem>
           <ListItem button component={Link} to="/products/1" onClick={toggleDrawer}>
-            <ListItemText primary="First Product" />
+            <ListItemText primary="Legenda" />
           </ListItem>
         </List>
       </Drawer>
       <Routes>
         <Route path="/" element={<DijkstraMap />} />
         <Route path="/graph/:id" element={<DijkstraMap />} />
+        <Route path="/legenda" element={<Legend />} />
+
       </Routes>
     </Router>
   );
