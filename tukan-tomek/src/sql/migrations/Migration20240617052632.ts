@@ -1,6 +1,6 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20240616174236 extends Migration {
+export class Migration20240617052632 extends Migration {
 
   async up(): Promise<void> {
     this.addSql('create table `graph` (`id` int unsigned not null auto_increment primary key, `created_at` datetime not null, `hash` varchar(255) not null) default character set utf8mb4 engine = InnoDB;');
@@ -11,8 +11,6 @@ export class Migration20240616174236 extends Migration {
     this.addSql('alter table `edge` add index `edge_connected_node_index`(`connected_node`);');
 
     this.addSql('alter table `edge` add constraint `edge_graph_id_foreign` foreign key (`graph_id`) references `graph` (`id`) on update cascade;');
-
-    this.addSql('alter table `testowa` modify `id` int unsigned not null auto_increment;');
   }
 
   async down(): Promise<void> {
@@ -21,8 +19,6 @@ export class Migration20240616174236 extends Migration {
     this.addSql('drop table if exists `graph`;');
 
     this.addSql('drop table if exists `edge`;');
-
-    this.addSql('alter table `testowa` modify `id` int unsigned not null;');
   }
 
 }
