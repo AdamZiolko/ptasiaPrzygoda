@@ -45,7 +45,7 @@ function AppRouter() {
           <ListItem button component={Link} to="/" onClick={toggleDrawer}>
             <ListItemText primary="Home" />
           </ListItem>
-          <ListItem button component={Link} to="/products/1" onClick={toggleDrawer}>
+          <ListItem button component={Link} to="/legenda" onClick={toggleDrawer}>
             <ListItemText primary="Legenda" />
           </ListItem>
         </List>
