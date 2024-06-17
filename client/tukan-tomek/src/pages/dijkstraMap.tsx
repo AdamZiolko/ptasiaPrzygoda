@@ -556,12 +556,10 @@ export function DijkstraMap() {
           stripesGroup.addChild(newStripe);
         }
 
-        // Add random grass elements
 
         paper.project.activeLayer.addChild(stripesGroup);
         paper.project.activeLayer.addChild(grassGroup);
 
-        // Set the background color to a light green color
         pattern = stripesGroup;
       };
       const nodeItems = {};
@@ -578,8 +576,6 @@ export function DijkstraMap() {
         const centerX = paper.view.size.width / 2;
         const centerY = paper.view.size.height / 2;
         const radius = Math.min(centerX, centerY) * 0.8;
-
-
 
         // renderAnimation(imageUrls, new paper.Point(210+frameIndex, 200));
 
